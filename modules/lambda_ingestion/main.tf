@@ -1,20 +1,53 @@
 ###############################################
-# DATA SOURCES — USE EXISTING AWS RESOURCES
+# IAM — LAMBDA ROLE + POLICIES (SELF-CONTAINED)
 ###############################################
 
-# Existing IAM role for Lambda
-data "aws_iam_role" "lambda_role" {
-  name = "weather-pipeline-lambda-role"
+# Trust policy for Lambda
+data "aws_iam_policy_document" "lambda_assume_role" {
+  statement {
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["lambda.amazonaws.com"]
+    }
+
+    actions = ["sts:AssumeRole"]
+  }
 }
 
-# Existing S3 bucket for scripts
-data "aws_s3_bucket" "scripts" {
-  bucket = "weather-pipeline-scripts-tg"
+# IAM role for Lambda (created inside module)
+resource "aws_iam_role" "lambda_role" {
+  name               = "${var.project_name}-lambda-role"
+  assume_role_policy = data.aws_iam_policy_document.lambda_assume_role.json
 }
 
-# Existing S3 bucket for raw data
-data "aws_s3_bucket" "raw" {
-  bucket = "weather-pipeline-raw-data-tg"
+# Basic execution policy (CloudWatch logs)
+resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
+  role       = aws_iam_role.lambda_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+# S3 access policy (read scripts + write raw data)
+resource "aws_iam_role_policy" "lambda_s3_access" {
+  name = "${var.project_name}-lambda-s3-access"
+  role = aws_iam_role.lambda_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["s3:GetObject"]
+        Resource = "arn:aws:s3:::${var.scripts_bucket}/*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["s3:PutObject"]
+        Resource = "arn:aws:s3:::${var.raw_bucket}/*"
+      }
+    ]
+  })
 }
 
 ###############################################
@@ -24,12 +57,12 @@ data "aws_s3_bucket" "raw" {
 resource "aws_lambda_function" "ingestion" {
   function_name = "${var.project_name}-ingestion-lambda"
 
-  role    = data.aws_iam_role.lambda_role.arn
+  role    = aws_iam_role.lambda_role.arn
   handler = "lambda_handler.lambda_handler"
   runtime = "python3.11"
 
   # Lambda code stored in S3 (uploaded by CI pipeline)
-  s3_bucket = data.aws_s3_bucket.scripts.bucket
+  s3_bucket = var.scripts_bucket
   s3_key    = "lambda/lambda.zip"
 
   # Forces Terraform to redeploy Lambda when code changes
@@ -40,15 +73,16 @@ resource "aws_lambda_function" "ingestion" {
 
   environment {
     variables = {
+      CITY            = var.city
       WEATHER_API_KEY = var.weather_api_key
-      RAW_BUCKET      = data.aws_s3_bucket.raw.bucket
+      RAW_BUCKET      = var.raw_bucket
       RAW_PREFIX      = var.raw_prefix
     }
   }
 }
 
 ###############################################
-# OPTIONAL: CLOUDWATCH LOG GROUP
+# CLOUDWATCH LOG GROUP
 ###############################################
 
 resource "aws_cloudwatch_log_group" "lambda_logs" {

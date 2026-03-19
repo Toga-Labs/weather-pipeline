@@ -1,36 +1,40 @@
 variable "project_name" {
   type        = string
-  description = "Base name used to prefix all AWS resources created by this project."
+  description = "Base name for all AWS resources."
 }
 
 variable "region" {
   type        = string
-  description = "AWS region where all resources will be deployed."
-}
-
-variable "city" {
-  type        = string
-  description = "City name used for weather API requests and naming conventions."
+  description = "AWS region for deployment."
 }
 
 variable "weather_api_key" {
   type        = string
-  description = "API key used to authenticate requests to the external weather data provider."
+  description = "API key for external weather service."
 }
 
 variable "raw_prefix" {
   type        = string
-  description = "S3 prefix (folder path) where raw ingested weather data will be stored."
+  description = "S3 prefix for raw weather data."
 }
 
 variable "scripts_bucket" {
   type        = string
-  description = "Name of the S3 bucket that stores Lambda code and ETL scripts.Flag to toggle infrastructure modules on or off"
+  description = "S3 bucket where Lambda code is uploaded by CI/CD."
 }
 
+variable "raw_bucket" {
+  type        = string
+  description = "S3 bucket where Lambda writes raw weather data."
+}
 
 variable "enable_infra" {
-  description = "Controls whether infra modules (IAM, S3, Glue) are deployed"
   type        = bool
   default     = true
+  description = "Controls whether infra modules (IAM, S3, Glue) are deployed."
+}
+
+variable "city" {
+  type        = string
+  description = "City name used for weather API requests."
 }
