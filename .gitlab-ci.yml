@@ -1,0 +1,47 @@
+stages:
+  - build
+  - upload
+  - terraform
+
+variables:
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+
+before_script:
+  - apt-get update -y
+  - apt-get install -y zip python3 python3-pip awscli
+
+###############################################
+# BUILD LAMBDA ZIP
+###############################################
+build_lambda:
+  stage: build
+  script:
+    - cd lambda_ingestion_code
+    - pip3 install -r requirements.txt -t package
+    - cp lambda_handler.py package/
+    - cd package
+    - zip -r ../lambda.zip .
+  artifacts:
+    paths:
+      - lambda_ingestion_code/lambda.zip
+
+###############################################
+# UPLOAD SCRIPTS TO S3
+###############################################
+upload_scripts:
+  stage: upload
+  script:
+    - aws s3 cp lambda_ingestion_code/lambda.zip s3://$SCRIPTS_BUCKET/lambda/lambda.zip
+    - aws s3 cp etl_scripts/weather_etl.py s3://$SCRIPTS_BUCKET/etl/weather_etl.py
+
+###############################################
+# TERRAFORM DEPLOY
+###############################################
+terraform_deploy:
+  stage: terraform
+  image: hashicorp/terraform:1.6
+  script:
+    - terraform init
+    - terraform plan
+    - terraform apply -auto-approve
