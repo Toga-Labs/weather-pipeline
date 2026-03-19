@@ -63,9 +63,13 @@ upload_scripts:
 
 terraform_lambda:
   stage: terraform_lambda
+  image:
+    name: hashicorp/terraform:1.6.0
+    entrypoint: [""]
   script:
     - terraform init
     - terraform apply -var="enable_infra=false" -auto-approve -target=module.lambda_ingestion
+
 
     # Apply ONLY the Lambda module
     # - enable_infra=false prevents IAM/S3/Glue modules from running
