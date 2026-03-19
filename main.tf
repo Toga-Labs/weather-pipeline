@@ -1,48 +1,58 @@
+
 ###############################################
-# PROJECT NAME
+# S3 BUCKETS (RAW, CURATED, ATHENA RESULTS)
 ###############################################
-variable "project_name" {
-  type        = string
-  description = "Name prefix for all project resources"
+module "s3" {
+  source       = "./modules/s3"
+  project_name = var.project_name
 }
 
 ###############################################
-# CITY FOR WEATHER API
+# IAM ROLES (Lambda, Glue, Crawlers, Athena)
 ###############################################
-variable "city" {
-  type        = string
-  description = "City to fetch weather data for (e.g., 'Coventry,UK')"
+module "iam" {
+  source       = "./modules/iam"
+  project_name = var.project_name
+
+  raw_bucket_arn            = module.s3.raw_bucket_arn
+  curated_bucket_arn        = module.s3.curated_bucket_arn
+  athena_results_bucket_arn = module.s3.athena_results_bucket_arn
 }
 
 ###############################################
-# WEATHER API KEY
+# LAMBDA INGESTION FUNCTION
 ###############################################
-variable "weather_api_key" {
-  type        = string
-  sensitive   = true
-  description = "Weather API key for Lambda ingestion"
+module "lambda_ingestion" {
+  source = "./modules/lambda_ingestion"
+
+  project_name    = var.project_name
+  lambda_role_arn = module.iam.lambda_role_arn
+
+  city            = var.city
+  weather_api_key = var.weather_api_key
+
+  raw_bucket_name = module.s3.raw_bucket_name
+  raw_prefix      = var.raw_prefix
+
+  scripts_bucket = var.scripts_bucket
 }
 
 ###############################################
-# RAW BUCKET NAME (for Lambda ingestion)
+# GLUE ETL JOB
 ###############################################
-variable "raw_bucket_name" {
-  type        = string
-  description = "S3 bucket where raw weather data is stored"
+module "glue_job" {
+  source        = "./modules/glue_job"
+  project_name  = var.project_name
+  glue_role_arn = module.iam.glue_role_arn
+
+  raw_bucket_name     = module.s3.raw_bucket_name
+  curated_bucket_name = module.s3.curated_bucket_name
 }
 
-###############################################
-# RAW PREFIX (folder inside raw bucket)
-###############################################
-variable "raw_prefix" {
-  type        = string
-  description = "Prefix/folder inside the raw bucket"
+module "glue_crawler_raw" {
+  source           = "./modules/glue_crawler_raw"
+  project_name     = var.project_name
+  crawler_role_arn = module.iam.crawler_role_arn
+  raw_bucket_name  = module.s3.raw_bucket_name
 }
 
-###############################################
-# SCRIPTS BUCKET (Lambda ZIP + ETL script)
-###############################################
-variable "scripts_bucket" {
-  type        = string
-  description = "S3 bucket storing Lambda ZIP and ETL script"
-}
