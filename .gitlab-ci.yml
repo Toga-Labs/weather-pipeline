@@ -13,6 +13,8 @@ variables:
 terraform_deploy:
   stage: terraform
   image: hashicorp/terraform:1.6
+  before_script: []
+  after_script: []
   script:
     - terraform init
     - terraform plan
