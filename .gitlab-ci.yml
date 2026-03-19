@@ -1,30 +1,41 @@
 stages:
-  - terraform
+  - terraform_infra
   - build
   - upload
+  - terraform_lambda
 
 variables:
   TF_IN_AUTOMATION: "true"
   TF_INPUT: "false"
+  # Set these in GitLab CI/CD variables:
+  # AWS_ACCESS_KEY_ID
+  # AWS_SECRET_ACCESS_KEY
+  # AWS_DEFAULT_REGION (e.g. eu-west-2)
+  # SCRIPTS_BUCKET (e.g. weather-pipeline-scripts-tg)
 
 ###############################################
-# TERRAFORM DEPLOY
+# 1. TERRAFORM INFRASTRUCTURE (BUCKETS, IAM, GLUE, CRAWLERS)
 ###############################################
-###############################################
-# TERRAFORM DEPLOY
-###############################################
-terraform_deploy:
-  stage: terraform
+terraform_infra:
+  stage: terraform_infra
   image:
     name: hashicorp/terraform:1.6.0
-    entrypoint: [""]  
+    entrypoint: [""]
   script:
     - terraform init
-    - terraform plan
-    - terraform apply -auto-approve
+    - terraform apply -auto-approve \
+        -target=module.s3 \
+        -target=module.iam \
+        -target=module.glue_job \
+        -target=module.glue_crawler_raw \
+        -target=module.glue_crawler_curated
+  artifacts:
+    paths:
+      - .
+    expire_in: 1 hour
 
 ###############################################
-# BUILD LAMBDA ZIP
+# 2. BUILD LAMBDA ZIP
 ###############################################
 build_lambda:
   stage: build
@@ -42,7 +53,7 @@ build_lambda:
       - lambda_ingestion_code/lambda.zip
 
 ###############################################
-# UPLOAD SCRIPTS TO S3
+# 3. UPLOAD LAMBDA ZIP + ETL SCRIPT TO S3
 ###############################################
 upload_scripts:
   stage: upload
@@ -50,3 +61,15 @@ upload_scripts:
   script:
     - aws s3 cp lambda_ingestion_code/lambda.zip s3://$SCRIPTS_BUCKET/lambda/lambda.zip
     - aws s3 cp etl_scripts/weather_etl.py s3://$SCRIPTS_BUCKET/etl/weather_etl.py
+
+###############################################
+# 4. TERRAFORM LAMBDA DEPLOY (AFTER ZIP EXISTS)
+###############################################
+terraform_lambda:
+  stage: terraform_lambda
+  image:
+    name: hashicorp/terraform:1.6.0
+    entrypoint: [""]
+  script:
+    - terraform init
+    - terraform apply -auto-approve -target=module.lambda_ingestion
