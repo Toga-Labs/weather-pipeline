@@ -48,7 +48,9 @@ build_lambda:
 ############################################################
 upload_scripts:
   stage: upload
-  image: amazon/aws-cli:latest
+  image: 
+    name: amazon/aws-cli:latest
+    entrypoint: [""]  # This unlocks the container so GitLab can run 'sh'
   script:
     - aws s3 cp lambda.zip s3://$SCRIPTS_BUCKET/lambda/lambda.zip
     - aws s3 cp etl_scripts/weather_etl.py s3://$SCRIPTS_BUCKET/etl/weather_etl.py
