@@ -34,12 +34,14 @@ build_lambda:
   stage: build
   image: python:3.11
   script:
+    - apt-get update && apt-get install -y zip
     - pip install -r lambda_ingestion_code/requirements.txt -t lambda_ingestion_code/
     - cd lambda_ingestion_code && zip -r ../lambda.zip .
   artifacts:
     paths:
       - lambda.zip
     expire_in: 1 hour
+
 
 ############################################################
 # 3. UPLOAD SCRIPTS TO S3
