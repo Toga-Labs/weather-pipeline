@@ -4,70 +4,56 @@ stages:
   - upload
   - terraform_lambda
 
-variables:
-  TF_IN_AUTOMATION: "true"
-  TF_INPUT: "false"
-  # Set these in GitLab CI/CD variables:
-  # AWS_ACCESS_KEY_ID
-  # AWS_SECRET_ACCESS_KEY
-  # AWS_DEFAULT_REGION (e.g. eu-west-2)
-  # SCRIPTS_BUCKET (e.g. weather-pipeline-scripts-tg)
-
-###############################################
-# 1. TERRAFORM INFRASTRUCTURE (BUCKETS, IAM, GLUE, CRAWLERS)
-###############################################
+############################################################
+# 1. TERRAFORM INFRASTRUCTURE (RUN MANUALLY)
+############################################################
 terraform_infra:
   stage: terraform_infra
+  when: manual
   image:
     name: hashicorp/terraform:1.6.0
     entrypoint: [""]
   script:
-  - terraform init
-  - |
-    terraform apply --auto-approve \
-      --target=module.s3 \
-      --target=module.iam \
-      --target=module.glue_job \
-      --target=module.glue_crawler_raw \
-      --target=module.glue_crawler_curated
-
+    - terraform init
+    - |
+      terraform apply -refresh=false --auto-approve \
+        --target=module.s3 \
+        --target=module.iam \
+        --target=module.glue_job \
+        --target=module.glue_crawler_raw \
+        --target=module.glue_crawler_curated
   artifacts:
     paths:
       - .
     expire_in: 1 hour
 
-###############################################
+############################################################
 # 2. BUILD LAMBDA ZIP
-###############################################
+############################################################
 build_lambda:
   stage: build
-  image: python:3.10
+  image: python:3.11
   script:
-    - apt-get update -y
-    - apt-get install -y zip
-    - cd lambda_ingestion_code
-    - pip install -r requirements.txt -t package
-    - cp lambda_handler.py package/
-    - cd package
-    - zip -r ../lambda.zip .
+    - pip install -r lambda_ingestion_code/requirements.txt -t lambda_ingestion_code/
+    - cd lambda_ingestion_code && zip -r ../lambda.zip .
   artifacts:
     paths:
-      - lambda_ingestion_code/lambda.zip
+      - lambda.zip
+    expire_in: 1 hour
 
-###############################################
-# 3. UPLOAD LAMBDA ZIP + ETL SCRIPT TO S3
-###############################################
+############################################################
+# 3. UPLOAD SCRIPTS TO S3
+############################################################
 upload_scripts:
   stage: upload
   image: amazon/aws-cli:latest
   script:
-    - aws s3 cp lambda_ingestion_code/lambda.zip s3://$SCRIPTS_BUCKET/lambda/lambda.zip
+    - aws s3 cp lambda.zip s3://$SCRIPTS_BUCKET/lambda/lambda.zip
     - aws s3 cp etl_scripts/weather_etl.py s3://$SCRIPTS_BUCKET/etl/weather_etl.py
 
-
-###############################################
-# 4. TERRAFORM LAMBDA DEPLOY (AFTER ZIP EXISTS)
-###############################################
+############################################################
+# 4. TERRAFORM LAMBDA DEPLOYMENT
+############################################################
 terraform_lambda:
   stage: terraform_lambda
   image:
@@ -75,4 +61,4 @@ terraform_lambda:
     entrypoint: [""]
   script:
     - terraform init
-    - terraform apply -auto-approve -target=module.lambda_ingestion
+    - terraform apply --auto-approve --target=module.lambda_ingestion
