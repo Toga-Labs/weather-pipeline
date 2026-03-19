@@ -66,8 +66,13 @@ terraform_lambda:
     entrypoint: [""]
   script:
     - terraform init
-    - terraform apply -var="enable_infra=false" --auto-approve --target=module.lambda_ingestion
-    
+    - |
+      terraform apply \
+        -var="enable_infra=false" \
+        --auto-approve \
+        --target=module.lambda_ingestion
+
+
     # Apply ONLY the Lambda module
     # - enable_infra=false prevents IAM/S3/Glue modules from running
     # - --target=module.lambda_ingestion ensures only Lambda is deployed
