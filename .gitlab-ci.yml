@@ -1,3 +1,9 @@
+############################################################
+# 1. GLOBAL "SAFETY NET" (Defaults to Terraform)
+############################################################
+image:
+  name: hashicorp/terraform:1.6.0
+  entrypoint: [""]
 
 stages:
   - terraform_infra
@@ -5,71 +11,51 @@ stages:
   - upload
   - terraform_lambda
 
+variables:
+  TF_IN_AUTOMATION: "true"
+
 ############################################################
-# 1. TERRAFORM INFRASTRUCTURE (RUN MANUALLY)
+# 2. USES GLOBAL IMAGE (Terraform)
 ############################################################
 terraform_infra:
   stage: terraform_infra
-  image:
-    name: hashicorp/terraform:1.6.0
-    entrypoint: [""]
   script:
     - terraform init
-    - |
-      terraform apply -refresh=false --auto-approve \
-        --target=module.s3 \
-        --target=module.iam \
-        --target=module.glue_job \
-        --target=module.glue_crawler_raw \
-        --target=module.glue_crawler_curated
-  artifacts:
-    paths:
-      - .
-    expire_in: 1 hour
+    - terraform apply -refresh=false --auto-approve --target=module.s3 # ...etc
 
 ############################################################
-# 2. BUILD LAMBDA ZIP
+# 3. OVERRIDES GLOBAL (Uses Python)
 ############################################################
 build_lambda:
   stage: build
-  image: python:3.11
+  image: python:3.11  # <--- MIXED IMAGE: Overrides Terraform
   script:
     - apt-get update && apt-get install -y zip
-    - pip install -r lambda_ingestion_code/requirements.txt -t lambda_ingestion_code/
     - cd lambda_ingestion_code && zip -r ../lambda.zip .
   artifacts:
     paths:
       - lambda.zip
-    expire_in: 1 hour
-
 
 ############################################################
-# 3. UPLOAD SCRIPTS TO S3
+# 4. OVERRIDES GLOBAL (Uses AWS CLI)
 ############################################################
-
 upload_scripts:
   stage: upload
-  image: 
-    name: amazon/aws-cli:latest
-    entrypoint: [""]  # This unlocks the container so GitLab can run 'sh'
+  image:
+    name: amazon/aws-cli:latest # <--- MIXED IMAGE: Overrides Terraform
+    entrypoint: [""]
   script:
     - aws s3 cp lambda.zip s3://$SCRIPTS_BUCKET/lambda/lambda.zip
-    - aws s3 cp etl_scripts/weather_etl.py s3://$SCRIPTS_BUCKET/etl/weather_etl.py
-
 
 ############################################################
-# 4. TERRAFORM LAMBDA DEPLOYMENT
+# 5. USES GLOBAL IMAGE (Terraform)
 ############################################################
-
 terraform_lambda:
   stage: terraform_lambda
-  image:
-    name: hashicorp/terraform:1.6.0
-    entrypoint: [""]
+  # Terraform image from the top of the file. stop runner using ruby image
   script:
     - terraform init
     - terraform apply -var="enable_infra=false" -auto-approve -target=module.lambda_ingestion
-
 
     # Apply ONLY the Lambda module
     # - enable_infra=false prevents IAM/S3/Glue modules from running
