@@ -8,6 +8,9 @@ resource "aws_lambda_function" "ingestion" {
   s3_bucket = var.scripts_bucket
   s3_key    = "lambda/lambda.zip"
 
+  # Forces Terraform to wait for the built lambda.zip before deploying Lambda
+  source_code_hash = filebase64sha256("${path.module}/../../lambda_ingestion_code/lambda.zip")
+
   timeout     = 30
   memory_size = 256
 
