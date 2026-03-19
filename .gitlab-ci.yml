@@ -22,13 +22,15 @@ terraform_infra:
     name: hashicorp/terraform:1.6.0
     entrypoint: [""]
   script:
-    - terraform init
-    - terraform apply -auto-approve \
-        -target=module.s3 \
-        -target=module.iam \
-        -target=module.glue_job \
-        -target=module.glue_crawler_raw \
-        -target=module.glue_crawler_curated
+  - terraform init
+  - |
+    terraform apply --auto-approve \
+      --target=module.s3 \
+      --target=module.iam \
+      --target=module.glue_job \
+      --target=module.glue_crawler_raw \
+      --target=module.glue_crawler_curated
+
   artifacts:
     paths:
       - .
