@@ -18,6 +18,9 @@ terraform_deploy:
     - terraform plan
     - terraform apply -auto-approve
 
+###############################################
+# BUILD LAMBDA ZIP
+###############################################
 build_lambda:
   stage: build
   image: python:3.10
@@ -33,6 +36,9 @@ build_lambda:
     paths:
       - lambda_ingestion_code/lambda.zip
 
+###############################################
+# UPLOAD SCRIPTS TO S3
+###############################################
 upload_scripts:
   stage: upload
   image: amazon/aws-cli:2.15
