@@ -49,7 +49,7 @@ upload_scripts:
 
 ############################################################
 # 5. USES GLOBAL IMAGE (Terraform)
-############################################################
+##############################################################
 terraform_lambda:
   stage: terraform_lambda
   # Terraform image from the top of the file. stop runner using ruby image
