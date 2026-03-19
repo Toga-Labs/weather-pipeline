@@ -9,7 +9,7 @@ resource "aws_lambda_function" "ingestion" {
   s3_key    = "lambda/lambda.zip"
 
   # Forces Terraform to wait for the built lambda.zip before deploying Lambda
-  source_code_hash = filebase64sha256("${path.module}/../../lambda_ingestion_code/lambda.zip")
+  source_code_hash = filebase64sha256("${path.module}/../../lambda_ingestion_code/placeholder.txt")
 
   timeout     = 30
   memory_size = 256
