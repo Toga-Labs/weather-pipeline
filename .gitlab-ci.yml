@@ -59,10 +59,11 @@ build_lambda:
 ###############################################
 upload_scripts:
   stage: upload
-  image: amazon/aws-cli:2.15
+  image: amazon/aws-cli:latest
   script:
     - aws s3 cp lambda_ingestion_code/lambda.zip s3://$SCRIPTS_BUCKET/lambda/lambda.zip
     - aws s3 cp etl_scripts/weather_etl.py s3://$SCRIPTS_BUCKET/etl/weather_etl.py
+
 
 ###############################################
 # 4. TERRAFORM LAMBDA DEPLOY (AFTER ZIP EXISTS)
