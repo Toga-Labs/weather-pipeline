@@ -53,6 +53,7 @@ upload_scripts:
     - aws s3 cp lambda.zip s3://$SCRIPTS_BUCKET/lambda/lambda.zip
     - aws s3 cp etl_scripts/weather_etl.py s3://$SCRIPTS_BUCKET/etl/weather_etl.py
 
+
 ############################################################
 # 4. TERRAFORM LAMBDA DEPLOYMENT
 ############################################################
