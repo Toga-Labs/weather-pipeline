@@ -68,6 +68,10 @@ module "glue_crawler_curated" {
 ###############################################
 
 module "lambda_ingestion" {
+  # Only create the Lambda when deploy_lambda=true.
+  # When false → count=0 → Terraform skips this module entirely.
+  count = var.deploy_lambda ? 1 : 0
+  ############################################################
   source         = "./modules/lambda_ingestion"
   project_name   = var.project_name
   city           = var.city

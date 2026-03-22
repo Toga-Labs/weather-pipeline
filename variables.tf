@@ -28,3 +28,12 @@ variable "city" {
   type        = string
   description = "City name used for weather API requests."
 }
+
+# Controls whether the Lambda module should be deployed.
+# - false  = skip Lambda creation (used in the first pipeline apply)
+# - true   = deploy Lambda (used after the ZIP is uploaded)
+variable "deploy_lambda" {
+  type    = bool
+  default = false
+}
+

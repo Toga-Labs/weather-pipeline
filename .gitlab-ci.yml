@@ -1,5 +1,5 @@
 ############################################################
-# 1. GLOBAL IMAGE (Terraform)
+# GLOBAL IMAGE (Terraform)
 ############################################################
 image:
   name: hashicorp/terraform:1.6.0
@@ -9,22 +9,22 @@ stages:
   - terraform_infra
   - build
   - upload
-  - terraform_apply
+  - terraform_lambda
 
 variables:
   TF_IN_AUTOMATION: "true"
 
 ############################################################
-# 2. APPLY FULL INFRASTRUCTURE (S3, IAM, Glue, Crawlers, Athena)
+# 1. APPLY INFRASTRUCTURE ONLY (NO LAMBDA)
 ############################################################
 terraform_infra:
   stage: terraform_infra
   script:
     - terraform init
-    - terraform apply -auto-approve
+    - terraform apply -auto-approve -var="deploy_lambda=false"
 
 ############################################################
-# 3. BUILD LAMBDA ZIP (Python)
+# 2. BUILD LAMBDA ZIP (Python)
 ############################################################
 build_lambda:
   stage: build
@@ -37,7 +37,7 @@ build_lambda:
       - lambda.zip
 
 ############################################################
-# 4. UPLOAD LAMBDA ZIP TO S3 (AWS CLI)
+# 3. UPLOAD LAMBDA ZIP TO S3
 ############################################################
 upload_scripts:
   stage: upload
@@ -48,10 +48,10 @@ upload_scripts:
     - aws s3 cp lambda.zip s3://$SCRIPTS_BUCKET/lambda/lambda.zip
 
 ############################################################
-# 5. APPLY TERRAFORM AGAIN TO UPDATE LAMBDA ONLY
+# 4. APPLY TERRAFORM AGAIN (CREATE LAMBDA NOW)
 ############################################################
-terraform_apply:
-  stage: terraform_apply
+terraform_lambda:
+  stage: terraform_lambda
   script:
     - terraform init
-    - terraform apply -auto-approve
+    - terraform apply -auto-approve -var="deploy_lambda=true"
