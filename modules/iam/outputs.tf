@@ -1,19 +1,15 @@
 output "lambda_role_arn" {
-  value       = aws_iam_role.lambda_role.arn
-  description = "IAM role ARN for Lambda ingestion function"
+  value = aws_iam_role.lambda_role.arn
 }
 
 output "glue_role_arn" {
-  value       = aws_iam_role.glue_role.arn
-  description = "IAM role ARN for Glue ETL job"
+  value = aws_iam_role.glue_role.arn
 }
 
 output "crawler_role_arn" {
-  value       = aws_iam_role.crawler_role.arn
-  description = "IAM role ARN for Glue crawlers"
+  value = aws_iam_role.crawler_role.arn
 }
 
 output "athena_role_arn" {
-  value       = aws_iam_role.athena_role.arn
-  description = "IAM role ARN for Athena queries"
+  value = aws_iam_role.athena_role.arn
 }

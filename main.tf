@@ -1,59 +1,79 @@
-
 ###############################################
-# OPTIONAL: INFRA MODULES (RUN ONLY IF ENABLED)
+# S3 MODULE (ALWAYS ON)
 ###############################################
 
 module "s3" {
   source = "./modules/s3"
-  count  = var.enable_infra ? 1 : 0
 
   project_name = var.project_name
 }
+
+###############################################
+# IAM MODULE (ALWAYS ON)
+###############################################
 
 module "iam" {
-  source = "./modules/iam"
-  count  = var.enable_infra ? 1 : 0
+  source                    = "./modules/iam"
+  project_name              = var.project_name
+  scripts_bucket            = var.scripts_bucket
+  raw_bucket                = var.raw_bucket
+  raw_bucket_arn            = module.s3.raw_bucket_arn
+  curated_bucket_arn        = module.s3.curated_bucket_arn
+  athena_results_bucket_arn = module.s3.athena_results_bucket_arn
+  api_key_ssm_arn           = "arn:aws:ssm:eu-west-2:913103947318:parameter/weather/api_key"
 
-  project_name = var.project_name
 
-  raw_bucket_arn            = var.enable_infra ? module.s3[0].raw_bucket_arn : null
-  curated_bucket_arn        = var.enable_infra ? module.s3[0].curated_bucket_arn : null
-  athena_results_bucket_arn = var.enable_infra ? module.s3[0].athena_results_bucket_arn : null
 }
+
+###############################################
+# GLUE JOB MODULE
+###############################################
 
 module "glue_job" {
   source = "./modules/glue_job"
-  count  = var.enable_infra ? 1 : 0
 
   project_name  = var.project_name
-  glue_role_arn = module.iam[0].glue_role_arn
+  glue_role_arn = module.iam.glue_role_arn
 
-  raw_bucket_name     = module.s3[0].raw_bucket_name
-  curated_bucket_name = module.s3[0].curated_bucket_name
+  raw_bucket_name     = module.s3.raw_bucket_name
+  curated_bucket_name = module.s3.curated_bucket_name
 }
+
+###############################################
+# RAW CRAWLER MODULE
+###############################################
 
 module "glue_crawler_raw" {
   source = "./modules/glue_crawler_raw"
-  count  = var.enable_infra ? 1 : 0
 
   project_name     = var.project_name
-  crawler_role_arn = module.iam[0].crawler_role_arn
-  raw_bucket_name  = module.s3[0].raw_bucket_name
+  crawler_role_arn = module.iam.crawler_role_arn
+  raw_bucket_name  = module.s3.raw_bucket_name
 }
 
 ###############################################
-# LAMBDA INGESTION MODULE (SELF-CONTAINED)
+# CURATED CRAWLER MODULE
+###############################################
+
+module "glue_crawler_curated" {
+  source = "./modules/glue_crawler_curated"
+
+  project_name        = var.project_name
+  crawler_role_arn    = module.iam.crawler_role_arn
+  curated_bucket_name = module.s3.curated_bucket_name
+}
+
+###############################################
+# LAMBDA INGESTION MODULE
 ###############################################
 
 module "lambda_ingestion" {
-  source = "./modules/lambda_ingestion"
-
-  project_name    = var.project_name
-  weather_api_key = var.weather_api_key
-  raw_prefix      = var.raw_prefix
-
-  # Buckets can come from infra OR be manually created
+  source         = "./modules/lambda_ingestion"
+  project_name   = var.project_name
+  city           = var.city
+  raw_prefix     = var.raw_prefix
   scripts_bucket = var.scripts_bucket
   raw_bucket     = var.raw_bucket
-  city           = var.city
+
+  lambda_role_arn = module.iam.lambda_role_arn
 }

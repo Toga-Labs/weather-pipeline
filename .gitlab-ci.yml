@@ -1,5 +1,5 @@
 ############################################################
-# 1. GLOBAL "SAFETY NET" (Defaults to Terraform)
+# 1. GLOBAL IMAGE (Terraform)
 ############################################################
 image:
   name: hashicorp/terraform:1.6.0
@@ -9,26 +9,26 @@ stages:
   - terraform_infra
   - build
   - upload
-  - terraform_lambda
+  - terraform_apply
 
 variables:
   TF_IN_AUTOMATION: "true"
 
 ############################################################
-# 2. USES GLOBAL IMAGE (Terraform)
+# 2. APPLY FULL INFRASTRUCTURE (S3, IAM, Glue, Crawlers, Athena)
 ############################################################
 terraform_infra:
   stage: terraform_infra
   script:
     - terraform init
-    - terraform apply -refresh=false --auto-approve --target=module.s3 # ...etc
+    - terraform apply -auto-approve
 
 ############################################################
-# 3. OVERRIDES GLOBAL (Uses Python)
+# 3. BUILD LAMBDA ZIP (Python)
 ############################################################
 build_lambda:
   stage: build
-  image: python:3.11  # <--- MIXED IMAGE: Overrides Terraform
+  image: python:3.11
   script:
     - apt-get update && apt-get install -y zip
     - cd lambda_ingestion_code && zip -r ../lambda.zip .
@@ -37,27 +37,21 @@ build_lambda:
       - lambda.zip
 
 ############################################################
-# 4. OVERRIDES GLOBAL (Uses AWS CLI)
+# 4. UPLOAD LAMBDA ZIP TO S3 (AWS CLI)
 ############################################################
 upload_scripts:
   stage: upload
   image:
-    name: amazon/aws-cli:latest # <--- MIXED IMAGE: Overrides Terraform
+    name: amazon/aws-cli:latest
     entrypoint: [""]
   script:
     - aws s3 cp lambda.zip s3://$SCRIPTS_BUCKET/lambda/lambda.zip
 
 ############################################################
-# 5. USES GLOBAL IMAGE (Terraform)
-##############################################################
-terraform_lambda:
-  stage: terraform_lambda
-  # Terraform image from the top of the file. stop runner using ruby image
+# 5. APPLY TERRAFORM AGAIN TO UPDATE LAMBDA ONLY
+############################################################
+terraform_apply:
+  stage: terraform_apply
   script:
     - terraform init
-    - terraform apply -var="enable_infra=false" -auto-approve -target=module.lambda_ingestion
-
-    # Apply ONLY the Lambda module
-    # - enable_infra=false prevents IAM/S3/Glue modules from running
-    # - --target=module.lambda_ingestion ensures only Lambda is deployed
-
+    - terraform apply -auto-approve
