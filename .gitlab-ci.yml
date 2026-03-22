@@ -21,7 +21,6 @@ terraform_plan:
 
 terraform_apply:
   stage: terraform_apply
-  when: manual
   before_script:
     - terraform init
   script:
