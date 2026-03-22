@@ -1,31 +1,30 @@
-############################################################
-# GLOBAL IMAGE (Terraform)
-############################################################
-image:
-  name: hashicorp/terraform:1.6.0
-  entrypoint: [""]
-
 stages:
-  - terraform_infra
+  - terraform_plan
+  - terraform_apply
   - build
   - upload
   - terraform_lambda
 
-variables:
-  TF_IN_AUTOMATION: "true"
-
-############################################################
-# 1. APPLY INFRASTRUCTURE ONLY (NO LAMBDA)
-############################################################
-terraform_infra:
-  stage: terraform_infra
-  script:
+terraform_plan:
+  stage: terraform_plan
+  before_script:
     - terraform init
-    - terraform apply -auto-approve -var="deploy_lambda=false"
+  script:
+    - terraform plan -out=tfplan -var="deploy_lambda=false"
+  artifacts:
+    paths:
+      - tfplan
 
-############################################################
-# 2. BUILD LAMBDA ZIP (Python)
-############################################################
+terraform_apply:
+  stage: terraform_apply
+  when: manual
+  before_script:
+    - terraform init
+  script:
+    - terraform apply -auto-approve tfplan
+  dependencies:
+    - terraform_plan
+
 build_lambda:
   stage: build
   image: python:3.11
@@ -36,9 +35,6 @@ build_lambda:
     paths:
       - lambda.zip
 
-############################################################
-# 3. UPLOAD LAMBDA ZIP TO S3
-############################################################
 upload_scripts:
   stage: upload
   image:
@@ -47,11 +43,9 @@ upload_scripts:
   script:
     - aws s3 cp lambda.zip s3://$SCRIPTS_BUCKET/lambda/lambda.zip
 
-############################################################
-# 4. APPLY TERRAFORM AGAIN (CREATE LAMBDA NOW)
-############################################################
 terraform_lambda:
   stage: terraform_lambda
-  script:
+  before_script:
     - terraform init
+  script:
     - terraform apply -auto-approve -var="deploy_lambda=true"
