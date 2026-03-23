@@ -31,6 +31,7 @@ terraform_plan:
   artifacts:
     paths:
       - tfplan
+      - modules/lambda_ingestion/lambda.zip
 
 ###############################################
 # 3. TERRAFORM APPLY
