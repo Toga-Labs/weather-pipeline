@@ -15,11 +15,13 @@ resource "aws_lambda_function" "ingestion" {
 
   environment {
     variables = {
-      CITY       = var.city
-      RAW_PREFIX = var.raw_prefix
-      RAW_BUCKET = var.raw_bucket
+      CITY              = var.city
+      RAW_PREFIX        = var.raw_prefix
+      RAW_BUCKET        = var.raw_bucket
+      API_KEY_SSM_PARAM = var.api_key_ssm_param
     }
   }
+
 }
 
 output "lambda_arn" {

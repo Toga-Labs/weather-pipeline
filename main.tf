@@ -36,13 +36,15 @@ module "glue_crawler_curated" {
 }
 
 module "lambda_ingestion" {
-  source          = "./modules/lambda_ingestion"
-  project_name    = var.project_name
-  city            = var.city
-  raw_prefix      = var.raw_prefix
-  raw_bucket      = var.raw_bucket
-  lambda_role_arn = module.iam.lambda_role_arn
+  source            = "./modules/lambda_ingestion"
+  project_name      = var.project_name
+  city              = var.city
+  raw_prefix        = var.raw_prefix
+  raw_bucket        = var.raw_bucket
+  lambda_role_arn   = module.iam.lambda_role_arn
+  api_key_ssm_param = "/weather/api_key"
 }
+
 
 module "eventbridge" {
   source              = "./modules/eventbridge"

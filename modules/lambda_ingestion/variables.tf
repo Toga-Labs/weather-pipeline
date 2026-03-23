@@ -27,3 +27,7 @@ variable "lambda_role_arn" {
   type        = string
   description = "ARN of the IAM role that Lambda will use. Provided by the IAM module."
 }
+
+variable "api_key_ssm_param" {
+  type = string
+}
