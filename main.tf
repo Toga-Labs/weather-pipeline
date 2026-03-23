@@ -6,7 +6,6 @@ module "s3" {
 module "iam" {
   source                    = "./modules/iam"
   project_name              = var.project_name
-  scripts_bucket            = var.scripts_bucket
   raw_bucket                = var.raw_bucket
   raw_bucket_arn            = module.s3.raw_bucket_arn
   curated_bucket_arn        = module.s3.curated_bucket_arn
@@ -41,7 +40,6 @@ module "lambda_ingestion" {
   project_name    = var.project_name
   city            = var.city
   raw_prefix      = var.raw_prefix
-  scripts_bucket  = var.scripts_bucket
   raw_bucket      = var.raw_bucket
   lambda_role_arn = module.iam.lambda_role_arn
 }
@@ -52,3 +50,4 @@ module "eventbridge" {
   schedule_expression = var.schedule_expression
   lambda_function_arn = module.lambda_ingestion.lambda_arn
 }
+

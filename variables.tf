@@ -13,10 +13,6 @@ variable "raw_prefix" {
   description = "S3 prefix for raw weather data."
 }
 
-variable "scripts_bucket" {
-  type        = string
-  description = "S3 bucket where Lambda code is uploaded by CI/CD."
-}
 
 variable "raw_bucket" {
   type        = string

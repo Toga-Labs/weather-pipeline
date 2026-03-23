@@ -4,11 +4,7 @@ variable "project_name" {
   description = "Project name used to build IAM role names."
 }
 
-# The S3 bucket where your Lambda code (lambda.zip) is stored.
-variable "scripts_bucket" {
-  type        = string
-  description = "S3 bucket that stores Lambda code and scripts."
-}
+
 
 # The RAW bucket where Lambda writes the weather JSON files.
 variable "raw_bucket" {

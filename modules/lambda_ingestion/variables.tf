@@ -16,12 +16,6 @@ variable "raw_prefix" {
   description = "S3 folder (prefix) inside the RAW bucket where Lambda saves raw data."
 }
 
-# The S3 bucket where your Lambda code (lambda.zip) is stored.
-variable "scripts_bucket" {
-  type        = string
-  description = "S3 bucket that stores the Lambda deployment package."
-}
-
 # The RAW bucket where Lambda writes the weather JSON files.
 variable "raw_bucket" {
   type        = string

@@ -30,11 +30,7 @@ resource "aws_iam_role_policy" "lambda_s3_access" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
-      {
-        Effect   = "Allow"
-        Action   = ["s3:GetObject"]
-        Resource = "arn:aws:s3:::${var.scripts_bucket}/*"
-      },
+
       {
         Effect   = "Allow"
         Action   = ["s3:PutObject"]
