@@ -42,4 +42,4 @@ terraform_apply:
     - terraform apply -auto-approve tfplan
   dependencies:
     - terraform_plan
-  when: manual
+ 
