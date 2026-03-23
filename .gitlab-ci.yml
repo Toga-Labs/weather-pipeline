@@ -3,53 +3,43 @@ image:
   entrypoint: [""]
 
 stages:
-  - terraform_plan
-  - terraform_apply
-  - build
-  - upload
-  - terraform_lambda
+  - validate
+  - plan
+  - apply
 
-terraform_plan:
-  stage: terraform_plan
-  before_script:
-    - terraform init
+variables:
+  TF_IN_AUTOMATION: "true"
+
+###############################################
+# 1. TERRAFORM FORMAT + VALIDATE
+###############################################
+terraform_validate:
+  stage: validate
   script:
-    - terraform plan -out=tfplan -var="deploy_lambda=false"
+    - terraform init -backend=false
+    - terraform fmt -check
+    - terraform validate
+
+###############################################
+# 2. TERRAFORM PLAN
+###############################################
+terraform_plan:
+  stage: plan
+  script:
+    - terraform init
+    - terraform plan -out=tfplan
   artifacts:
     paths:
       - tfplan
 
+###############################################
+# 3. TERRAFORM APPLY
+###############################################
 terraform_apply:
-  stage: terraform_apply
-  before_script:
-    - terraform init
+  stage: apply
   script:
+    - terraform init
     - terraform apply -auto-approve tfplan
   dependencies:
     - terraform_plan
-
-build_lambda:
-  stage: build
-  image: python:3.11
-  script:
-    - apt-get update && apt-get install -y zip
-    - cd lambda_ingestion_code && zip -r ../lambda.zip .
-  artifacts:
-    paths:
-      - lambda.zip
-
-upload_scripts:
-  stage: upload
-  image:
-    name: amazon/aws-cli:latest
-    entrypoint: [""]
-  script:
-    - aws s3 cp lambda.zip s3://$SCRIPTS_BUCKET/lambda/lambda.zip
-
-terraform_lambda:
-  stage: terraform_lambda
-  before_script:
-    - terraform init
-  script:
-    - terraform apply -auto-approve -var="deploy_lambda=true"
-    
+  when: manual

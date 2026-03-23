@@ -37,3 +37,7 @@ variable "deploy_lambda" {
   default = false
 }
 
+variable "schedule_expression" {
+  type        = string
+  description = "EventBridge schedule expression (cron or rate)"
+}
