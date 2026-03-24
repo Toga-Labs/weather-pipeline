@@ -78,7 +78,9 @@ data "aws_iam_policy_document" "glue_policy" {
       var.raw_bucket_arn,
       "${var.raw_bucket_arn}/*",
       var.curated_bucket_arn,
-      "${var.curated_bucket_arn}/*"
+      "${var.curated_bucket_arn}/*",
+      var.scripts_bucket_arn,
+      "${var.scripts_bucket_arn}/*"
     ]
   }
 

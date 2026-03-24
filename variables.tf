@@ -37,3 +37,8 @@ variable "schedule_expression" {
   type        = string
   description = "EventBridge schedule expression (cron or rate)"
 }
+
+variable "scripts_bucket_arn" {
+  type        = string
+  description = "ARN of the S3 bucket containing Glue ETL scripts"
+}

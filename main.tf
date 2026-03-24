@@ -11,6 +11,7 @@ module "iam" {
   curated_bucket_arn        = module.s3.curated_bucket_arn
   athena_results_bucket_arn = module.s3.athena_results_bucket_arn
   api_key_ssm_arn           = "arn:aws:ssm:eu-west-2:913103947318:parameter/weather/api_key"
+  scripts_bucket_arn        = var.scripts_bucket_arn
 }
 
 module "glue_job" {

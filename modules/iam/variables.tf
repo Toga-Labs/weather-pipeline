@@ -34,3 +34,8 @@ variable "api_key_ssm_arn" {
   type        = string
   description = "ARN of the SSM parameter storing the API key"
 }
+
+variable "scripts_bucket_arn" {
+  type        = string
+  description = "ARN of the S3 bucket containing Glue ETL scripts"
+}
