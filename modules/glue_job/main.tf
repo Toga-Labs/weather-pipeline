@@ -29,3 +29,4 @@ resource "aws_glue_job" "etl" {
     Purpose = "glue-etl"
   }
 }
+
