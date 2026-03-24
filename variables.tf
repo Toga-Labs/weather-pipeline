@@ -42,3 +42,13 @@ variable "scripts_bucket_arn" {
   type        = string
   description = "ARN of the S3 bucket containing Glue ETL scripts"
 }
+
+variable "glue_database_name" {
+  type        = string
+  description = "Name of the Glue database for the curated table"
+}
+
+variable "glue_table_name" {
+  type        = string
+  description = "Name of the Glue table created by the crawler"
+}

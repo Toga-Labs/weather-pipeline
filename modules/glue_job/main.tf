@@ -14,11 +14,18 @@ resource "aws_glue_job" "etl" {
 
   default_arguments = {
     "--job-language"                     = "python"
-    "--raw_bucket_name"                  = var.raw_bucket_name
-    "--curated_bucket_name"              = var.curated_bucket_name
     "--enable-metrics"                   = "true"
     "--enable-continuous-cloudwatch-log" = "true"
+
+    # Required by your ETL script
+    "--RAW_BUCKET"     = var.raw_bucket_name
+    "--RAW_PREFIX"     = "weather/"
+    "--CURATED_BUCKET" = var.curated_bucket_name
+    "--CURATED_PREFIX" = "weather/"
+    "--DATABASE_NAME"  = var.glue_database_name
+    "--TABLE_NAME"     = var.glue_table_name
   }
+
 
   glue_version      = "4.0"
   number_of_workers = 2

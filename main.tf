@@ -20,7 +20,11 @@ module "glue_job" {
   glue_role_arn       = module.iam.glue_role_arn
   raw_bucket_name     = module.s3.raw_bucket_name
   curated_bucket_name = module.s3.curated_bucket_name
+
+  glue_database_name = var.glue_database_name
+  glue_table_name    = var.glue_table_name
 }
+
 
 module "glue_crawler_raw" {
   source           = "./modules/glue_crawler_raw"
