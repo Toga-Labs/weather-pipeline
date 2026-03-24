@@ -8,7 +8,7 @@ resource "aws_glue_job" "etl" {
 
   command {
     name            = "glueetl"
-    script_location = "s3://${var.raw_bucket_name}/scripts/etl_script.py"
+    script_location = "s3://tg-etl-scripts/etl_script.py"
     python_version  = "3"
   }
 
