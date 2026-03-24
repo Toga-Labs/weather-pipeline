@@ -19,7 +19,7 @@ resource "aws_glue_job" "etl" {
 
     # Required by your ETL script
     "--RAW_BUCKET"     = var.raw_bucket_name
-    "--RAW_PREFIX"     = "weather/"
+    "--RAW_PREFIX"     = "weather_raw/"
     "--CURATED_BUCKET" = var.curated_bucket_name
     "--CURATED_PREFIX" = "weather/"
     "--DATABASE_NAME"  = var.glue_database_name
