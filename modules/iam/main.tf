@@ -191,3 +191,4 @@ resource "aws_iam_role_policy" "athena_role_policy" {
   role   = aws_iam_role.athena_role.id
   policy = data.aws_iam_policy_document.athena_policy.json
 }
+
