@@ -1,9 +1,15 @@
 import sys
+import boto3
 from awsglue.transforms import *
 from awsglue.utils import getResolvedOptions
 from pyspark.context import SparkContext
 from awsglue.context import GlueContext
 from awsglue.job import Job
+from pyspark.sql.functions import (
+    col,
+    from_unixtime,
+    to_date
+)
 
 # -------------------------------------------------------------------
 # Glue job arguments
@@ -50,40 +56,38 @@ raw_df = (
 )
 
 # -------------------------------------------------------------------
-# 2. Flatten / select relevant fields to match the JSON structure
+# 2. Flatten OpenWeatherMap JSON
 # -------------------------------------------------------------------
-from pyspark.sql.functions import col, to_timestamp
-
 flattened_df = (
     raw_df
     .select(
-        col("location.name").alias("city"),
-        col("location.region").alias("region"),
-        col("location.country").alias("country"),
-        col("location.lat").alias("latitude"),
-        col("location.lon").alias("longitude"),
-        to_timestamp(col("location.localtime")).alias("localtime"),
+        col("name").alias("city"),
+        col("sys.country").alias("country"),
+        col("coord.lat").alias("latitude"),
+        col("coord.lon").alias("longitude"),
 
-        col("current.temp_c").alias("temp_c"),
-        col("current.temp_f").alias("temp_f"),
-        col("current.is_day").alias("is_day"),
-        col("current.wind_kph").alias("wind_kph"),
-        col("current.wind_dir").alias("wind_dir"),
-        col("current.pressure_mb").alias("pressure_mb"),
-        col("current.humidity").alias("humidity"),
-        col("current.cloud").alias("cloud"),
-        col("current.feelslike_c").alias("feelslike_c"),
-        col("current.vis_km").alias("vis_km"),
-        col("current.uv").alias("uv"),
-        col("current.gust_kph").alias("gust_kph"),
+        # Convert Unix timestamp to proper timestamp
+        from_unixtime(col("dt")).alias("localtime"),
+
+        col("main.temp").alias("temp_c"),
+        col("main.feels_like").alias("feelslike_c"),
+        col("main.pressure").alias("pressure_mb"),
+        col("main.humidity").alias("humidity"),
+
+        col("wind.speed").alias("wind_kph"),
+        col("wind.deg").alias("wind_dir"),
+
+        col("clouds.all").alias("cloud"),
+        col("visibility").alias("vis_km"),
+
+        col("weather")[0]["main"].alias("weather_main"),
+        col("weather")[0]["description"].alias("weather_description"),
     )
 )
 
 # -------------------------------------------------------------------
 # 3. Write curated data to S3 as Parquet (partitioned by date)
 # -------------------------------------------------------------------
-from pyspark.sql.functions import to_date
-
 curated_df = flattened_df.withColumn("date", to_date(col("localtime")))
 
 curated_path = f"s3://{CURATED_BUCKET}/{CURATED_PREFIX}"
@@ -98,53 +102,55 @@ curated_path = f"s3://{CURATED_BUCKET}/{CURATED_PREFIX}"
 )
 
 # -------------------------------------------------------------------
-# 4. Create / update Glue table via GlueContext
+# 4. Create / update Glue table using boto3 (Glue 3.0+ compatible)
 # -------------------------------------------------------------------
-glueContext.create_dynamic_frame.from_options(
-    connection_type="s3",
-    connection_options={"paths": [curated_path]},
-    format="parquet"
-)
+glue_client = boto3.client("glue")
 
-glueContext.catalog_client.create_table(
-    database=DATABASE_NAME,
-    table_input={
-        "Name": TABLE_NAME,
-        "StorageDescriptor": {
-            "Columns": [
-                {"Name": "city", "Type": "string"},
-                {"Name": "region", "Type": "string"},
-                {"Name": "country", "Type": "string"},
-                {"Name": "latitude", "Type": "double"},
-                {"Name": "longitude", "Type": "double"},
-                {"Name": "localtime", "Type": "timestamp"},
-                {"Name": "temp_c", "Type": "double"},
-                {"Name": "temp_f", "Type": "double"},
-                {"Name": "is_day", "Type": "int"},
-                {"Name": "wind_kph", "Type": "double"},
-                {"Name": "wind_dir", "Type": "string"},
-                {"Name": "pressure_mb", "Type": "double"},
-                {"Name": "humidity", "Type": "int"},
-                {"Name": "cloud", "Type": "int"},
-                {"Name": "feelslike_c", "Type": "double"},
-                {"Name": "vis_km", "Type": "double"},
-                {"Name": "uv", "Type": "double"},
-                {"Name": "gust_kph", "Type": "double"},
-            ],
-            "Location": curated_path,
-            "InputFormat": "org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat",
-            "OutputFormat": "org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat",
-            "SerdeInfo": {
-                "SerializationLibrary": "org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe",
-                "Parameters": {"serialization.format": "1"},
-            },
-        },
-        "PartitionKeys": [
-            {"Name": "date", "Type": "date"}
+table_input = {
+    "Name": TABLE_NAME,
+    "StorageDescriptor": {
+        "Columns": [
+            {"Name": "city", "Type": "string"},
+            {"Name": "country", "Type": "string"},
+            {"Name": "latitude", "Type": "double"},
+            {"Name": "longitude", "Type": "double"},
+            {"Name": "localtime", "Type": "timestamp"},
+            {"Name": "temp_c", "Type": "double"},
+            {"Name": "feelslike_c", "Type": "double"},
+            {"Name": "pressure_mb", "Type": "double"},
+            {"Name": "humidity", "Type": "int"},
+            {"Name": "wind_kph", "Type": "double"},
+            {"Name": "wind_dir", "Type": "int"},
+            {"Name": "cloud", "Type": "int"},
+            {"Name": "vis_km", "Type": "double"},
+            {"Name": "weather_main", "Type": "string"},
+            {"Name": "weather_description", "Type": "string"},
         ],
-        "TableType": "EXTERNAL_TABLE",
-        "Parameters": {"classification": "parquet"},
+        "Location": curated_path,
+        "InputFormat": "org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat",
+        "OutputFormat": "org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat",
+        "SerdeInfo": {
+            "SerializationLibrary": "org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe",
+            "Parameters": {"serialization.format": "1"},
+        },
     },
-)
+    "PartitionKeys": [
+        {"Name": "date", "Type": "date"}
+    ],
+    "TableType": "EXTERNAL_TABLE",
+    "Parameters": {"classification": "parquet"},
+}
+
+# Try to create table; if exists, update it
+try:
+    glue_client.create_table(
+        DatabaseName=DATABASE_NAME,
+        TableInput=table_input
+    )
+except glue_client.exceptions.AlreadyExistsException:
+    glue_client.update_table(
+        DatabaseName=DATABASE_NAME,
+        TableInput=table_input
+    )
 
 job.commit()

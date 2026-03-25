@@ -30,7 +30,6 @@ resource "aws_iam_role_policy" "lambda_s3_access" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
-
       {
         Effect   = "Allow"
         Action   = ["s3:PutObject"]
@@ -65,8 +64,8 @@ resource "aws_iam_role" "glue_role" {
   assume_role_policy = data.aws_iam_policy_document.glue_assume_role.json
 }
 
-# ---- Glue Job Policy Document (MISSING BEFORE — NOW FIXED) ----
 data "aws_iam_policy_document" "glue_policy" {
+  # S3 access for raw, curated, and scripts buckets
   statement {
     effect = "Allow"
     actions = [
@@ -84,12 +83,14 @@ data "aws_iam_policy_document" "glue_policy" {
     ]
   }
 
+  # Logs + CloudWatch metrics (THIS FIXES YOUR FAILURE)
   statement {
     effect = "Allow"
     actions = [
       "logs:CreateLogGroup",
       "logs:CreateLogStream",
-      "logs:PutLogEvents"
+      "logs:PutLogEvents",
+      "cloudwatch:PutMetricData"
     ]
     resources = ["*"]
   }
@@ -121,7 +122,6 @@ resource "aws_iam_role" "crawler_role" {
   assume_role_policy = data.aws_iam_policy_document.crawler_assume_role.json
 }
 
-# ---- Crawler Policy Document (MISSING BEFORE — NOW FIXED) ----
 data "aws_iam_policy_document" "crawler_policy" {
   statement {
     effect = "Allow"
@@ -172,7 +172,6 @@ resource "aws_iam_role" "athena_role" {
   assume_role_policy = data.aws_iam_policy_document.athena_assume_role.json
 }
 
-# ---- Athena Policy Document (MISSING BEFORE — NOW FIXED) ----
 data "aws_iam_policy_document" "athena_policy" {
   statement {
     effect = "Allow"
