@@ -4,52 +4,63 @@ module "s3" {
 }
 
 module "iam" {
-  source                    = "./modules/iam"
-  project_name              = var.project_name
-  raw_bucket                = var.raw_bucket
-  raw_bucket_arn            = module.s3.raw_bucket_arn
-  curated_bucket_arn        = module.s3.curated_bucket_arn
+  source       = "./modules/iam"
+  project_name = var.project_name
+
+  raw_bucket     = module.s3.raw_bucket
+  raw_bucket_arn = module.s3.raw_bucket_arn
+
+  curated_bucket     = module.s3.curated_bucket
+  curated_bucket_arn = module.s3.curated_bucket_arn
+
+  scripts_bucket     = module.s3.scripts_bucket
+  scripts_bucket_arn = module.s3.scripts_bucket_arn
+
+  temp_bucket     = module.s3.temp_bucket
+  temp_bucket_arn = module.s3.temp_bucket_arn
+
+  athena_results_bucket     = module.s3.athena_results_bucket
   athena_results_bucket_arn = module.s3.athena_results_bucket_arn
-  api_key_ssm_arn           = "arn:aws:ssm:eu-west-2:913103947318:parameter/weather/api_key"
-  scripts_bucket_arn        = var.scripts_bucket_arn
+
+  api_key_ssm_arn = "arn:aws:ssm:eu-west-2:913103947318:parameter/weather/api_key"
 }
 
 module "glue_job" {
-  source              = "./modules/glue_job"
-  project_name        = var.project_name
-  glue_role_arn       = module.iam.glue_role_arn
-  raw_bucket_name     = module.s3.raw_bucket_name
-  curated_bucket_name = module.s3.curated_bucket_name
+  source        = "./modules/glue_job"
+  project_name  = var.project_name
+  glue_role_arn = module.iam.glue_role_arn
+
+  raw_bucket_name     = module.s3.raw_bucket
+  curated_bucket_name = module.s3.curated_bucket
 
   glue_database_name = var.glue_database_name
   glue_table_name    = var.glue_table_name
 }
 
-
 module "glue_crawler_raw" {
   source           = "./modules/glue_crawler_raw"
   project_name     = var.project_name
   crawler_role_arn = module.iam.crawler_role_arn
-  raw_bucket_name  = module.s3.raw_bucket_name
+  raw_bucket_name  = module.s3.raw_bucket
 }
 
 module "glue_crawler_curated" {
   source              = "./modules/glue_crawler_curated"
   project_name        = var.project_name
   crawler_role_arn    = module.iam.crawler_role_arn
-  curated_bucket_name = module.s3.curated_bucket_name
+  curated_bucket_name = module.s3.curated_bucket
 }
 
 module "lambda_ingestion" {
-  source            = "./modules/lambda_ingestion"
-  project_name      = var.project_name
-  city              = var.city
-  raw_prefix        = var.raw_prefix
-  raw_bucket        = var.raw_bucket
+  source       = "./modules/lambda_ingestion"
+  project_name = var.project_name
+  city         = var.city
+  raw_prefix   = var.raw_prefix
+
+  raw_bucket        = module.s3.raw_bucket
   lambda_role_arn   = module.iam.lambda_role_arn
   api_key_ssm_param = "/weather/api_key"
 }
-
 
 module "eventbridge" {
   source              = "./modules/eventbridge"
@@ -57,4 +68,3 @@ module "eventbridge" {
   schedule_expression = var.schedule_expression
   lambda_function_arn = module.lambda_ingestion.lambda_arn
 }
-

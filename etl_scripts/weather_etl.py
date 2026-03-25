@@ -29,9 +29,9 @@ args = getResolvedOptions(
 
 JOB_NAME       = args["JOB_NAME"]
 RAW_BUCKET     = args["RAW_BUCKET"]
-RAW_PREFIX     = args["RAW_PREFIX"]
+RAW_PREFIX     = args["RAW_PREFIX"].rstrip("/")
 CURATED_BUCKET = args["CURATED_BUCKET"]
-CURATED_PREFIX = args["CURATED_PREFIX"]
+CURATED_PREFIX = args["CURATED_PREFIX"].rstrip("/")
 DATABASE_NAME  = args["DATABASE_NAME"]
 TABLE_NAME     = args["TABLE_NAME"]
 
@@ -47,7 +47,8 @@ job.init(JOB_NAME, args)
 # -------------------------------------------------------------------
 # 1. Read raw JSON from S3
 # -------------------------------------------------------------------
-raw_path = f"s3://{RAW_BUCKET}/{RAW_PREFIX}"
+raw_path = f"s3://{RAW_BUCKET}/{RAW_PREFIX}/*"
+print("DEBUG RAW PATH:", raw_path)
 
 raw_df = (
     spark.read
@@ -59,29 +60,22 @@ raw_df = (
 # 2. Flatten OpenWeatherMap JSON
 # -------------------------------------------------------------------
 flattened_df = (
-    raw_df
-    .select(
+    raw_df.select(
         col("name").alias("city"),
         col("sys.country").alias("country"),
         col("coord.lat").alias("latitude"),
         col("coord.lon").alias("longitude"),
-
-        # Convert Unix timestamp to proper timestamp
         from_unixtime(col("dt")).alias("localtime"),
-
         col("main.temp").alias("temp_c"),
         col("main.feels_like").alias("feelslike_c"),
         col("main.pressure").alias("pressure_mb"),
         col("main.humidity").alias("humidity"),
-
         col("wind.speed").alias("wind_kph"),
         col("wind.deg").alias("wind_dir"),
-
         col("clouds.all").alias("cloud"),
         col("visibility").alias("vis_km"),
-
         col("weather")[0]["main"].alias("weather_main"),
-        col("weather")[0]["description"].alias("weather_description"),
+        col("weather")[0]["description"].alias("weather_description")
     )
 )
 
@@ -90,7 +84,8 @@ flattened_df = (
 # -------------------------------------------------------------------
 curated_df = flattened_df.withColumn("date", to_date(col("localtime")))
 
-curated_path = f"s3://{CURATED_BUCKET}/{CURATED_PREFIX}"
+curated_path = f"s3://{CURATED_BUCKET}/{CURATED_PREFIX}/"
+print("DEBUG CURATED PATH:", curated_path)
 
 (
     curated_df
@@ -102,7 +97,7 @@ curated_path = f"s3://{CURATED_BUCKET}/{CURATED_PREFIX}"
 )
 
 # -------------------------------------------------------------------
-# 4. Create / update Glue table using boto3 (Glue 3.0+ compatible)
+# 4. Create / update Glue table using boto3
 # -------------------------------------------------------------------
 glue_client = boto3.client("glue")
 
@@ -124,33 +119,35 @@ table_input = {
             {"Name": "cloud", "Type": "int"},
             {"Name": "vis_km", "Type": "double"},
             {"Name": "weather_main", "Type": "string"},
-            {"Name": "weather_description", "Type": "string"},
+            {"Name": "weather_description", "Type": "string"}
         ],
         "Location": curated_path,
         "InputFormat": "org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat",
         "OutputFormat": "org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat",
         "SerdeInfo": {
             "SerializationLibrary": "org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe",
-            "Parameters": {"serialization.format": "1"},
-        },
+            "Parameters": {"serialization.format": "1"}
+        }
     },
     "PartitionKeys": [
         {"Name": "date", "Type": "date"}
     ],
     "TableType": "EXTERNAL_TABLE",
-    "Parameters": {"classification": "parquet"},
+    "Parameters": {"classification": "parquet"}
 }
 
-# Try to create table; if exists, update it
 try:
     glue_client.create_table(
         DatabaseName=DATABASE_NAME,
         TableInput=table_input
     )
+    print("Table created.")
 except glue_client.exceptions.AlreadyExistsException:
     glue_client.update_table(
         DatabaseName=DATABASE_NAME,
         TableInput=table_input
     )
+    print("Table updated.")
 
 job.commit()
+

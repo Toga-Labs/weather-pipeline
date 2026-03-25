@@ -21,11 +21,10 @@ resource "aws_glue_job" "etl" {
     "--RAW_BUCKET"     = var.raw_bucket_name
     "--RAW_PREFIX"     = "weather_raw/"
     "--CURATED_BUCKET" = var.curated_bucket_name
-    "--CURATED_PREFIX" = "weather/"
+    "--CURATED_PREFIX" = "weather_curated/"
     "--DATABASE_NAME"  = var.glue_database_name
     "--TABLE_NAME"     = var.glue_table_name
   }
-
 
   glue_version      = "4.0"
   number_of_workers = 2
@@ -36,4 +35,3 @@ resource "aws_glue_job" "etl" {
     Purpose = "glue-etl"
   }
 }
-
