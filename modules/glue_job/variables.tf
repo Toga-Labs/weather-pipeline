@@ -1,25 +1,29 @@
 variable "project_name" {
-  type = string
+  type        = string
+  description = "Project name used to name the Glue ETL job"
 }
 
 variable "glue_role_arn" {
-  type = string
+  type        = string
+  description = "IAM role ARN that the Glue ETL job will assume"
 }
 
 variable "raw_bucket_name" {
-  type = string
+  type        = string
+  description = "Name of the RAW S3 bucket where input data is stored"
 }
 
 variable "curated_bucket_name" {
-  type = string
+  type        = string
+  description = "Name of the CURATED S3 bucket where transformed data is written"
 }
 
-variable "glue_database_name" {
+variable "scripts_bucket" {
   type        = string
-  description = "Name of the Glue database for the curated table"
+  description = "S3 bucket containing the Glue ETL script"
 }
 
-variable "glue_table_name" {
+variable "temp_bucket" {
   type        = string
-  description = "Name of the Glue table created by the crawler"
+  description = "S3 bucket used by Glue as the temporary directory (TempDir)"
 }

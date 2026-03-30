@@ -12,3 +12,9 @@ variable "curated_bucket_name" {
   type        = string
   description = "CURATED bucket name"
 }
+
+variable "database_name" {
+  type        = string
+  description = "Glue database name for CURATED zone"
+}
+

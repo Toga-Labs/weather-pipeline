@@ -8,7 +8,7 @@ resource "aws_glue_job" "etl" {
 
   command {
     name            = "glueetl"
-    script_location = "s3://tg-etl-scripts/weather_etl.py"
+    script_location = "s3://${var.scripts_bucket}/weather_etl.py"
     python_version  = "3"
   }
 
@@ -17,13 +17,14 @@ resource "aws_glue_job" "etl" {
     "--enable-metrics"                   = "true"
     "--enable-continuous-cloudwatch-log" = "true"
 
-    # Required by your ETL script
+    # Required by ETL script
+    "--JOB_NAME"       = "${var.project_name}-glue-etl-job"
     "--RAW_BUCKET"     = var.raw_bucket_name
-    "--RAW_PREFIX"     = "weather_raw/"
+    "--RAW_PREFIX"     = "raw/"
     "--CURATED_BUCKET" = var.curated_bucket_name
     "--CURATED_PREFIX" = "weather_curated/"
-    "--DATABASE_NAME"  = var.glue_database_name
-    "--TABLE_NAME"     = var.glue_table_name
+    "--DATABASE_NAME"  = "weather-pipeline_raw_db"
+    "--TABLE_NAME"     = "curated"
   }
 
   glue_version      = "4.0"
@@ -35,3 +36,4 @@ resource "aws_glue_job" "etl" {
     Purpose = "glue-etl"
   }
 }
+

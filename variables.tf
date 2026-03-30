@@ -13,13 +13,6 @@ variable "raw_prefix" {
   description = "S3 prefix for raw weather data."
 }
 
-
-variable "raw_bucket" {
-  type        = string
-  description = "S3 bucket where Lambda writes raw weather data."
-}
-
-
 variable "city" {
   type        = string
   description = "City name used for weather API requests."
@@ -38,17 +31,4 @@ variable "schedule_expression" {
   description = "EventBridge schedule expression (cron or rate)"
 }
 
-variable "scripts_bucket_arn" {
-  type        = string
-  description = "ARN of the S3 bucket containing Glue ETL scripts"
-}
 
-variable "glue_database_name" {
-  type        = string
-  description = "Name of the Glue database for the curated table"
-}
-
-variable "glue_table_name" {
-  type        = string
-  description = "Name of the Glue table created by the crawler"
-}

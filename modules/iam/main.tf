@@ -1,8 +1,7 @@
-###############################################
+############################################################
 # LAMBDA ROLE
-###############################################
+############################################################
 
-# Allow Lambda to assume the role
 data "aws_iam_policy_document" "lambda_assume_role" {
   statement {
     effect = "Allow"
@@ -19,13 +18,11 @@ resource "aws_iam_role" "lambda_role" {
   assume_role_policy = data.aws_iam_policy_document.lambda_assume_role.json
 }
 
-# Basic Lambda logging
 resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
   role       = aws_iam_role.lambda_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
-# Lambda permissions for S3 + SSM
 resource "aws_iam_role_policy" "lambda_s3_access" {
   name = "${var.project_name}-lambda-s3-access"
   role = aws_iam_role.lambda_role.id
@@ -33,13 +30,11 @@ resource "aws_iam_role_policy" "lambda_s3_access" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
-      # Write raw weather data
       {
         Effect   = "Allow"
         Action   = ["s3:PutObject"]
         Resource = "arn:aws:s3:::${var.raw_bucket}/*"
       },
-      # Read API key from SSM Parameter Store
       {
         Effect   = "Allow"
         Action   = ["ssm:GetParameter", "ssm:GetParameters"]
@@ -49,11 +44,10 @@ resource "aws_iam_role_policy" "lambda_s3_access" {
   })
 }
 
-###############################################
+############################################################
 # GLUE JOB ROLE
-###############################################
+############################################################
 
-# Allow Glue to assume the role
 data "aws_iam_policy_document" "glue_assume_role" {
   statement {
     effect = "Allow"
@@ -70,92 +64,74 @@ resource "aws_iam_role" "glue_role" {
   assume_role_policy = data.aws_iam_policy_document.glue_assume_role.json
 }
 
-# Glue job permissions
 data "aws_iam_policy_document" "glue_policy" {
 
-  ###############################################
-  # RAW BUCKET (read only)
-  ###############################################
+  # RAW bucket (read)
   statement {
-    effect = "Allow"
-    actions = [
-      "s3:GetObject",
-      "s3:ListBucket"
-    ]
+    effect  = "Allow"
+    actions = ["s3:GetObject", "s3:ListBucket"]
     resources = [
       var.raw_bucket_arn,
       "${var.raw_bucket_arn}/*"
     ]
   }
 
-  ###############################################
-  # CURATED BUCKET (read + write)
-  ###############################################
+  # CURATED bucket (read/write)
   statement {
-    effect = "Allow"
-    actions = [
-      "s3:GetObject",
-      "s3:PutObject",
-      "s3:DeleteObject",
-      "s3:ListBucket"
-    ]
+    effect  = "Allow"
+    actions = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:ListBucket"]
     resources = [
       var.curated_bucket_arn,
       "${var.curated_bucket_arn}/*"
     ]
   }
 
-  ###############################################
-  # SCRIPTS BUCKET (read only)
-  ###############################################
+  # SCRIPTS bucket (read)
   statement {
-    effect = "Allow"
-    actions = [
-      "s3:GetObject",
-      "s3:ListBucket"
-    ]
+    effect  = "Allow"
+    actions = ["s3:GetObject", "s3:ListBucket"]
     resources = [
       var.scripts_bucket_arn,
       "${var.scripts_bucket_arn}/*"
     ]
   }
 
-  ###############################################
-  # TEMP BUCKET (read + write)
-  ###############################################
+  # TEMP bucket (read/write)
   statement {
-    effect = "Allow"
-    actions = [
-      "s3:GetObject",
-      "s3:PutObject",
-      "s3:DeleteObject",
-      "s3:ListBucket"
-    ]
+    effect  = "Allow"
+    actions = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:ListBucket"]
     resources = [
       var.temp_bucket_arn,
       "${var.temp_bucket_arn}/*"
     ]
   }
 
-  ###############################################
-  # GLUE CATALOG ACCESS
-  ###############################################
+  # Glue Catalog (FULL — all required permissions)
   statement {
     effect = "Allow"
     actions = [
       "glue:GetDatabase",
       "glue:GetDatabases",
+      "glue:CreateDatabase",
+
       "glue:GetTable",
       "glue:GetTables",
       "glue:CreateTable",
-      "glue:UpdateTable"
+      "glue:UpdateTable",
+
+      "glue:GetPartition",
+      "glue:GetPartitions",
+      "glue:BatchGetPartition",
+      "glue:BatchCreatePartition",
+      "glue:BatchUpdatePartition",
+
+      "glue:GetCatalogImportStatus",
+      "glue:GetUserDefinedFunctions"
     ]
     resources = ["*"]
   }
 
-  ###############################################
-  # CLOUDWATCH LOGGING
-  ###############################################
+  # Logging
   statement {
     effect = "Allow"
     actions = [
@@ -166,6 +142,13 @@ data "aws_iam_policy_document" "glue_policy" {
     ]
     resources = ["*"]
   }
+
+  # Required for Glue jobs
+  statement {
+    effect    = "Allow"
+    actions   = ["s3:ListAllMyBuckets"]
+    resources = ["*"]
+  }
 }
 
 resource "aws_iam_role_policy" "glue_role_policy" {
@@ -174,9 +157,9 @@ resource "aws_iam_role_policy" "glue_role_policy" {
   policy = data.aws_iam_policy_document.glue_policy.json
 }
 
-###############################################
-# CRAWLER ROLE
-###############################################
+############################################################
+# GLUE CRAWLER ROLE
+############################################################
 
 data "aws_iam_policy_document" "crawler_assume_role" {
   statement {
@@ -198,11 +181,8 @@ data "aws_iam_policy_document" "crawler_policy" {
 
   # Read raw + curated buckets
   statement {
-    effect = "Allow"
-    actions = [
-      "s3:GetObject",
-      "s3:ListBucket"
-    ]
+    effect  = "Allow"
+    actions = ["s3:GetObject", "s3:ListBucket"]
     resources = [
       var.raw_bucket_arn,
       "${var.raw_bucket_arn}/*",
@@ -211,19 +191,40 @@ data "aws_iam_policy_document" "crawler_policy" {
     ]
   }
 
-  # Crawler needs full Glue Catalog access
+  # Glue Catalog (FULL — all required permissions)
   statement {
     effect = "Allow"
     actions = [
       "glue:GetDatabase",
+      "glue:GetDatabases",
+      "glue:CreateDatabase",
+
+      "glue:GetTable",
       "glue:GetTables",
       "glue:CreateTable",
       "glue:UpdateTable",
+
+      "glue:GetPartition",
       "glue:GetPartitions",
+      "glue:BatchGetPartition",
       "glue:BatchCreatePartition",
-      "glue:BatchUpdatePartition"
+      "glue:BatchUpdatePartition",
+
+      "glue:GetCatalogImportStatus",
+      "glue:GetUserDefinedFunctions"
     ]
     resources = ["*"]
+  }
+
+  # Logging
+  statement {
+    effect = "Allow"
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents"
+    ]
+    resources = ["arn:aws:logs:*:*:*"]
   }
 }
 
@@ -233,9 +234,9 @@ resource "aws_iam_role_policy" "crawler_role_policy" {
   policy = data.aws_iam_policy_document.crawler_policy.json
 }
 
-###############################################
+############################################################
 # ATHENA ROLE
-###############################################
+############################################################
 
 data "aws_iam_policy_document" "athena_assume_role" {
   statement {
@@ -255,14 +256,10 @@ resource "aws_iam_role" "athena_role" {
 
 data "aws_iam_policy_document" "athena_policy" {
 
-  # Athena query results + read curated data
+  # Athena results + curated data
   statement {
-    effect = "Allow"
-    actions = [
-      "s3:GetObject",
-      "s3:PutObject",
-      "s3:ListBucket"
-    ]
+    effect  = "Allow"
+    actions = ["s3:GetObject", "s3:PutObject", "s3:ListBucket"]
     resources = [
       var.curated_bucket_arn,
       "${var.curated_bucket_arn}/*",
@@ -271,7 +268,7 @@ data "aws_iam_policy_document" "athena_policy" {
     ]
   }
 
-  # Glue Catalog access for Athena
+  # Glue Catalog
   statement {
     effect = "Allow"
     actions = [
@@ -290,3 +287,4 @@ resource "aws_iam_role_policy" "athena_role_policy" {
   role   = aws_iam_role.athena_role.id
   policy = data.aws_iam_policy_document.athena_policy.json
 }
+

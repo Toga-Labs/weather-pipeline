@@ -32,7 +32,8 @@ def lambda_handler(event, context):
 
     # Generate timestamped S3 key
     timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H-%M-%SZ")
-    key = f"weather_raw/{city.replace(',', '_')}/{timestamp}.json"
+    safe_city = city.replace(",", "_").replace(" ", "_")
+    key = f"raw/{safe_city}/{timestamp}.json"
 
     # Store JSON in RAW bucket
     s3.put_object(
